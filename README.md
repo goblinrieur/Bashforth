@@ -1,4 +1,11 @@
 # Bashforth
+
+Will I guess only add few more words to get it better & more usable. I will never try to have a full ANS froth compatibility.
+
+If you need a full forth, prefer gnu-forth, swiftforth, figforth, pforh, or any other interpreter. Here is a bash exercice at first ! 
+
+# forked on Tue Jul 18 2023
+
 This Forth interpreter, entirely written as bash script, is a F³ (Fully Functional Forth), albeit a tad slow.
 Some would call it "sluggish". As rough indication, an ARM SBC which I'm running Bashforth on takes about 15 second
 for an empty loop of 100,000 iterations. It has built-in _doc_ and _see_ facilities, simplifying exploration of Bashforth.

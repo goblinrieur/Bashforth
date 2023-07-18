@@ -1,0 +1,760 @@
+#!/bin/bash
+# set -x
+# required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
+# bashforth - forth interpreter in bash
+# v0.03 20030219 ls added bool, logical, constants, fixed nip and other
+# v0.04 20030219 ls added ?dup, fixed 0branch
+# v0.05 20030220 ls reviewed auto-inc/dec addressing modi, fixed 0branch again
+# v0.06 20030220 ls constants redone
+# v0.07 20030220 ls added lshift rshift
+# v0.08 20030220 ls emit outputs correctly decimal numbers on stack. thanks dufflebunk
+# v0.09 20030220 ls simplified asc table building.
+# v0.10 20030220 ls accept works. uses external command  cut  right now.
+# v0.11 20030220 ls added pad c@ @ c! ! count
+# v0.12 20030221 ls key and accept return asciis, rather than chars.
+#                        emit, type, find work on asciis
+# v0.13 20030221 ls word,  input stream parser, query, interpret, quit added
+#                        this enables multiple words on input line
+# v0.14 20030221 ls ?number added, extended interpreter. numbers work, but
+#                         only decimal
+# v0.15 20030221 ls added deferred words, improved error handler. first
+#                        defining words. creation of variables works.
+# v0.16 20030221 ls immediate, colon definitions work
+# v0.17 20030222 ls improved prompt, added ' and ['], compiles numbers
+#                        find returns the word#, can get to xt, name and header flags.
+#                        added 2*, 2/, negate, begin..again  begin..until
+# v0.18 20030222 ls if..then, if..else..then begin..while..repeat work. structure is tested
+# v0.19 20030222 ls do..loop, i, j, negative numbers input, commented out debug output
+#                        from virtual machine for 50% speed improvement
+# v0.20 20030223 ls added  does>  2+
+# v0.21 20030223 ls hide, reveal, constant. started redoing error handler. loops broken
+# v0.22 20030223 ls loops fixed. ?comp
+# v0.23 20030223 ls added  catch throw ?exec  . fixed key (space). ctrl chars return asc of space too.
+# v0.24 20030224 ls added  ." , s" , $, .(      fixed bug in word .  tests stack underflow
+# v0.26 20030225 ls added s( \ (
+# v0.27 20030225 ls errorhandler through throw. top level error handler catches gracefully
+# v0.28 20030225 ls speed increase of about 50 %
+# v0.29 20030225 ls exit, outputs asciis 0...31, speeded up compares, improved move
+# v0.30 20030225 ls .. outputs decimal (quick), . respects base (slower), number input respects base
+#                        added hex, decimal, binary
+# v0.31 20030226 ls pictured number output added ( <# # #s #> #>type sign )
+# v0.31a20030226 ls hold (forgotten, pictured number output), rot, -rot
+# v0.32 20030226 ls system (shells to command), pack ( a n -- x ) packs string to string on tos,
+#                        unpack (explodes tos string to memory), cleaned up messy accept and name
+# v0.33 20030226 ls added bash, fixed does>, started include.  sent out for does> fix
+# v0.34 20030226 ls first rough version of include works. no nesting yet. thanks deltab for getting the source into vars
+# v0.35 20030226 ls fixed backslash bug in include.
+# this is for the time being the last version of bashforth. i'm now busy working on a target translator which allows to generate source
+# for several languages, including bash
+# v0.36 20030305 ls added pick, found a way to split input stream into chars w/o requiring external cut, as a result
+#                        including source files works much quicker. bashforth is "pure" now.
+# v0.37 20030309 ls number output with . doesn't complain about zero-string stack elements.
+#                        stack order  reversed.  added */  */mod  ?do  leave . speeded up type
+# v0.37a20030310 ls fixed include, broken in 0.37 because of changed do
+# v0.37b20030310 ls fixed include again. * in source was expanded to file list
+# v0.37c20030310 ls fixed ." which had cr appended
+# v0.38 20030310 ls added skip, scan, tuck, compare
+# v0.39 20030310 ls added min max abs fill doc,   abort throws,  removed ?exec
+# v0.40 20030311 ls bugfix for 2.05a, hopefully for 2.04 too. incompatible with 2.03
+# v0.41 20030311 ls redone doc. this implementation writes line number to word body. added rnd +! cell cells chars
+# v0.42 20030311 ls more consistent use of addressing modes, added
+#                date&time.fixed negative number big introduced with .40
+# v0.42a20030313 ls changed email address. verified function on bash 2.04. thanks, stepan
+# v0.42b20030315 ls fixed sign bug, result of v0.40, added >name
+# v0.43 20030316 ls added .name, roll, improved locate and >name, last points now to cfa of last word
+# v0.44 20030316 ls added cell+ char +loop ?leave **
+# v0.45 20030316 ls added 2>r 2r>, cleaned up code, speeded up some words (type, #, words)
+# v0.46 20030316 ls added literal, compiling, addressing modes optimizations
+# v0.46a20030316 ls bugfix addressing modes v0.46. untested with bash 2.04
+# v0.47 20030319 ls added black yellow green red blue magenta cyan white fg bg colors
+# v0.47a20030320 ls added normal bold underscore reverse attr@ attr!
+# v0.47b20030320 ls added at home
+# v0.47c20030325 ls added ?at (doesn't work yet) number /string right$ left$
+# v0.48 20030325 ls added system2 2swap dup$ drop$ depth$ 2dup$ swap$ over$ nip$ rot$ push$ pop$ append$
+#                        modified left$ right$, these work on stop string stack element now
+#                        modified doc to show word description, besides stack effect. optimized does>
+# v0.48a20030325 ls added/modified descriptions
+# v0.48b20030526 ls replaced hide/reveal against versions by h-peter recktenwald. these ones seem
+#                        to be less sensitive for the used version of bash
+# v0.48c20030527 ls bug fix "hold", bug discovered by h-peter recktenwald
+# v0.48d20030530 ls merged with h-peter recktenwald's patches: info, hold, immediate
+#                        hi-level . is about 50 % slower than former primitive version
+#                        (output 1000 number 7.5 rather than 4.7 seconds now)
+# v0.48e20030808 ls attempted fix of ?number, number and * for bash v2.04 on BEOS
+# v0.49 20030809 ls fixed time&date, broken after 2.04 fix in 0.48e
+# v0.49a20030809 ls fixed loop +loop for 2.04
+# v0.49b20030818 ls found a better fix for time&date
+# v0.49c20031019 ls fixed : foo ." *" ;  bug which displayed current directory
+# v0.49d20031019 ls added for .. next, compatible with i j  , added spaces.
+#                        made count tolerant for non-initialized memory locations
+# v0.49e20031019 ls attempt to include nonexisting file throws -38
+# 0.50  20031028 ls added see  (does not decompile, shows script source instead)
+# 0.50a 20040101 ls fixed : $structured, not structured in until
+# 0.50b 20040928 ls optional doc <word> uses sed rather than tail - recently tail args were changed.
+# 0.51  20041004 ls added 2@ and 2!, suggested by Antonio Maschio
+# 0.52  20041116 ls slow (1sec) version of key?, added secs and epoche
+# 0.52a 20041123 ls can emit ascii <32 correctly
+# 0.53  20041217 ls ***STACK EFFECT OF 'WORD' HAS CHANGED***  previously ( c -- a n ), it is now ( c -- cstring ), with string at HERE
+#                        previous a was pointing into input stream. STREAM was added, providing function of former WORD. new WORD uses STREAM.
+#                        added :noname  . bugfix compare .
+# 0.53a 20041220 ls trapped Ctrl-C: warm start
+# 0.53b 20041220 ls added >body body>
+# 0.53c 20041222 ls include appends .bashforth extension and retries if file not found
+# 0.54  20050119 ls fixed bug in move
+# 0.54a 20050222 ls added ?
+# 0.54b 20050331 ls div/0 exception
+# 0.55  20060314 ls unhandled exceptions quit, not warmstart, leaving radix untouched
+# 0.55a 20061003 lsls removed unnecessary cat in see
+# 0.55b 20071220 ls reversed logic in key?
+#                changed comparison against empty string to -z test in exception and 2 other
+#                speeded up by using [[ or (( instead of [
+#                simplified logic here and there
+# 0.55c20071223 ls exception accepts literal
+# 0.56 20071229 ls line numbers (for doc and see) dont't require info #LINENO per word anymore
+#                        changed all function foo { } to  foo() { }
+#                        passed command line is executed
+#                        string stack underflow detected
+#                        string stack emptied on warm and cold
+#                        fixed bug in include
+#                        string stack operators testing for underflow
+#                        first mac debian package
+# 0.56a 20071231 ls fix in key (returns ascii for space now)
+#                        added nanoseconds, time (measures execution time)
+#                        made distance between HERE and PAD a config variable: PADAWAY
+#                        tib size configurable too
+#                        simplified some logic
+#                        changed find to resemble a bit more the standard
+#                        using new find in interpreter loop
+#                        using printf instead of echo
+#                        misc small speedups (or rather, removed a few slowdowns)
+# 0.56b intermediate testing speed improvements
+# 0.56c 20080114 ls added control characters in output ascii table
+#                        using (( cond )) && action where appropriate
+#         changing spacing to accommodate fte syntax highlighting better
+#         some more arithmetic optimisations
+# 0.57 20091005 ls  key?, needs bash 4, waits 1ms. single char buffer,
+#                        read by key?, used by key and accept.
+# 0.57a 20101022 ls fixed bug in (s") which must have slipped into with
+#                          a recent version
+#        slight optimisation of abs
+# 0.57b 20101101 ls added env, removed "upload" handling, which went into a source file by the same name.
+#                          renamed "timestamp" to "epoche"
+#                          renamed "merge$" to "append$"
+#           attempts to source ~/.bashforthrc, use to set variables:
+#                              sources=/path/to/sourcefiles     # "include" reads source files from that dir,
+#                                                               # and defaults to current directory if unset.
+#                          added "type$"
+# 0.57c 20101112 ls simplified exception, and some style improvements sprinkled all over the code
+#                          user interrupt (ctrl-c) improved
+# 0.57d 20101127 ls removed load and loadfrom. reversed logic on -z string tests.
+#                          removed -n from string tests.
+# 0.58  20101220 ls replaced right$. simpler, shorter, faster
+#           changed result generation of key?
+#                          bug fix number - may have another, dropping sign with hex -ff
+# 0.58a  20110819 ls fixed bug with multiple consecutive revealheader
+# 0.58b  20120312 ls multi line compound arithmetic expressions problem with bash 4.2-1 at hash
+# 0.58c  20170609 ls A syntax error affecting bash v4.4 was fixed.
+#            ASCII to char translation array initialised with char(1) now.
+# 0.59   20190806 ls uses $EPOCHSECONDS instead of $(date +%s) for epoche when running under bash 5+
+# 0.59a  20190821 ls some more quoting, removed saving IFS contents in key and key?
+#                    changed !(( to ! (( to pacify shellcheck.
+# 0.60   20190830 ls added restore, restore-from, save-system, saveas, contributed by quaraman-me
+#                    type$ didn't drop top string stack element. Fixed
+#                    changed output of .s$ to vertical. top of string stack is uppermost output line.
+#                    Fixed error in type when outputting % char.
+# 0.60a  20190830 ls .s$ autodecrements
+# 0.60b  20190830 ls added nlimit, producing highest signed number.
+#                    fixed rshift: making it logical right shift while bash does arithmetic right shift.
+#                    partially (attempted to fix) sign problem in #
+# 0.60c  20190830 ls see prevented from mangling output lines.
+# 0.60d  20190830 ls fixed expanding * in restore.
+# 0.60e  20190830 ls fixed: number input accepting some non numeric chars. A side effect is that digits > 10 are now case insensitive.
+#                    added: 2swap d= sub$
+#                    changed: left$ and right$ call sub$, ?number uses (fixed) number
+# 0.60f  20190831 ls fixed: wrong number output when outputting a number with only msb set (nlimit+1)
+#                    changed (already in a previous version): executing save-system and restore without file name write to/read from $sources directory
+# 0.61   20190831 ls functionally reverted to 0.60f, undoing changes to floored modulo and division, causing more damage than benefits
+# 0.61a  20190831 ls fixed: (s") bug from 0.57a again, seems to have reinstroduced when reverting.
+# 0.62   20190909 ls added: !sourcepath complements sourcepath
+#                    changed: set working variables in compare to local
+# 0.63   20190909 ls changed: words attempts to break lines
+# 0.63a  20201121 ls fixed: exposed one superfluous "epoche" header 
+#
+#   known bugs:
+#     catch:   doesn't return the thrown value correctly sometimes
+#     include: max line length in source files isn't checked against TIBSIZE
+#     env: without name abort with "invalid variable name"
+#     see: doesn't look into included source files
+#     /:  while modulo and divison of /mod and */mod are floored,  / isn't.
+# global variables:
+# ip           virtual machine instruction pointer
+# w            virtual machine word pointer.
+# sp           data stack pointer
+# rp           return stack pointer
+# wc           word count, number of headers. used as name field address
+# temp         scratch. never used to carry data across words/functions
+# tos          top of stack, stack cache
+# dp           dictionary pointer, "here". new words are added at this address
+# state        compile/interpret switch
+# catchframe   pointer to latest frame
+# ssp          string stack pointer
+# global variable arrays:
+# m            memory
+# s            data stack
+# r            return stack
+# h            headers (word names)
+# hf           header flags (precedence bit, smudge bit)
+# x            execution tokens
+# asc          characters array, indexed by decimal ascii
+# ss           string stack
+################################# example primitive #####################################
+# # ( -- ) description  # stack diagram, description
+# revealheader "foo"    # name in forth vocabulary
+# code foo foo          # name in bash, call of executable
+#          --------- executable may follow, but may also be seperated ----------
+# foo() {               # executable implementated as function
+#    s[++sp]=$tos       # stack push
+#    tos=${s[sp--]}     # stack pop
+# }                     # empty lines follows
+#
+#########################################################################################
+################################# example hi-level word #####################################
+# # ( -- ) description  # stack diagram, description
+# revealheader "foo"    # name in forth vocabulary
+# colon foo           \ # name in bash. line continuation
+#   $word $word $word \ # compiled words, line continuation
+#   $word $word         # last line does not need continuation, empty line follows
+#
+#########################################################################################
+# -------------------------------------------------------------------------
+# ---                           configuration                           ---
+# -------------------------------------------------------------------------
+PADAWAY=256                      # distance between HERE and PAD
+# -------------------------------------------------------------------------
+# ---                  allocate memory / initialize vars                ---
+# -------------------------------------------------------------------------
+m=()                             # memory
+s=()                             # data stack
+r=()                             # return stack
+h=()                             # headers, wordcount
+hf=()                            # header flags, corresponding to headers
+x=()                             # execution tokens, corresponding to headers
+ss=()                            # string stack
+declare -i ip w                  # instruction and word pointer of virtual machine
+declare -i s0=0 sp               # data stack origin and pointer
+declare -i r0=0 rp               # return stack origin and pointer
+declare -i ss0=0 ssp             # string stack origin and pointer
+declare -i dp=0                  # dictionary pointer
+declare -i wc=0                  # word count
+declare -i state=0               # compiler/interpreter switch
+declare -i catchframe=0          # pointer to latest catch frame, or 0
+sources="."                      # unless overwritten from .bashforthrc or !sourcepath
+# ---- bitmasks ------------------------------------------------------------
+# declared as read-only, integer
+declare -ri precedencebit=1      # immediate words
+declare -ri smudgebit=2          # hide/reveal headers
+# --------------- build decimal>ascii lookup table for emit ----------------
+   asc[i]=$(echo -en "\\x$(printf '%x' $i)")  # ascii 0-255
+# ------------------------------- "macros" ---------------------------------
+# --- array of variables and functions which will be removed after the script has been loaded ---
+# --- only to use with words which help building bashforth, but aren't required at runtime ---
+transient remove              # remove must either be non-transient, or the first transient.
+   h[wc++]="$1"                  # word name
+   ((m[dp++]=BASH_LINENO[0]-1))  # source line number - consider to put file/line into an array with source locations
+# -----------------------------------------------------------------------------
+# -------------------------------- system start -------------------------------
+# -----------------------------------------------------------------------------
+# warm start vector
+# ( ??? -- ) init stacks and vars, restart interpreter
+# -------------------------------------------------------------------------
+# ---                      ctrl-c: user interrupt                       ---
+# -------------------------------------------------------------------------
+#trap "echo bashforth finished" EXIT
+#trap "echo err" ERR
+#trap "echo return" RETURN
+# -----------------------------------------------------------------------------
+# ------------------------------ virtual machine ------------------------------
+# -----------------------------------------------------------------------------
+# ( -- ) exits the current definition. compiled by ;
+# ----------------------------------------------------------------------------
+# --------------------------- constants, variables ---------------------------
+# ----------------------------------------------------------------------------
+# ( -- -1 )
+# ( -- -1 )
+# ( -- 0 )
+# ( -- 0 )
+# ( -- 1 )
+# ( -- 1 )
+# ( -- 2 )
+# ( -- 3 )
+# ( -- 4 )
+# ( -- 5 )
+# ( -- 6 )
+# ( -- 27 ) ASCII of Escape char
+# ( -- 32 ) ASCII of space char
+# ( -- x ) highest signed number
+# ( -- a )
+# ( -- a ) flags/switches interpret/compile mode
+# ( -- a ) variable, pointing to cfa of last word
+# ( -- a ) a memory area, relative to here, for user purposes
+# ( -- a ) variable containing the input and output radix
+# ----------------------------------------------------------------------------
+# ------------------------------- run time -----------------------------------
+# ----------------------------------------------------------------------------
+# ( -- ) run time word - to be compiled by another word
+# ( f -- ) run time word - to be compiled by another word
+# ( f -- ) run time word - compiled internally instead of  0= branch0
+# ( -- x ) when compiled into a word, the contents of the cell under $ip are pushed to stack and skipped from execution
+# ( a n -- x ) assembles asciis at m[a] to string in tos
+#pack() {
+#   temp="${s[sp--]}"
+#   temp2=$tos
+#   tos="$(printf '\x0' $(printf '%x' "${m[@]:temp:temp2}"))"
+#   echo ">>> $tos <<<"
+#   printf '\x0%x ' "${m[@]:temp:temp2}"
+#}
+# ( x a -- n ) unpacks string x to ascii ordinals at a
+# ( -- a c ) run time word - to be compiled by s"
+# ( -- ) run time word - to be compiled by ."
+# ( limit start -- ) run time word - to be compiled by for
+# ( -- ) run time word - to be compiled by next
+# ( limit start -- ) run time word - to be compiled by do
+# ( limit start -- ) run time word - to be compiled by ?do
+# ( -- ) run time word - to be compiled by leave
+# ( -- ) run time word - to be compiled by ?leave
+# ( -- ) run time word - to be compiled by loop
+# ( -- ) run time word - to be compiled by +loop
+# ( ? xt -- ? )
+# -----------------------------------------------------------------------------
+# ------------------------------ stack operators ------------------------------
+# -----------------------------------------------------------------------------
+# ( -- n ) returns number stack elements on data stack
+# ( x -- x x ) duplicate top stack element
+# ( x1 x2 -- x1 x2 x1 x2 ) duplicate top two stck elements
+# ( 0 -- 0 )  ( x -- x x ) duplicate top stack element only if it is not zero
+# ( x -- ) discard top stack element
+# ( x1 x2 -- ) discard top two stack elements
+# ( x1 x2 -- x2 x1 ) swap the top two stack elements with each other
+# ( x1 x2 x3 x4 -- x3 x4 x1 x2 ) swap top 2 stack items against 3rd and 4th of stack
+# ( x1 x2 -- x1 x2 x1 ) push copy of second stack element to top
+# ( x1 x2 x3 x4 -- x1 x2 x3 x4 x1 x2 ) copy 3rd and 4th stack item to stack top
+# ( x1 x2 -- x2 ) discard second stack element
+# ( x1 x2 -- x2 x1 x2 ) insert a copy of top of stack under second stack element
+# ( x1 x2 x3 -- x2 x3 x1 ) rotate third stack element to top
+# ( x1 x2 x3 -- x3 x1 x2 ) rotate top stack element under second stack element
+# ( ... x2 x1  x0 n -- xn ) place a copy of stack element n on top of stack
+# ( ... x2 x1  x0 n -- ... x2 x1 x0 xn  ) rotate stack element n to top of stack
+# ( x -- ) moves top of data stack to return stack
+# ( -- x ) moves top of return stack to data stack
+# ( -- x ) copies top of return stack to data stack
+# ( -- ) drops top of return stack
+# ( x1 x2 -- ) moves top two data stack elements to return stack
+# ( -- x1 x2 ) moves top two return stack elements to data stack
+# ( -- x ) returns index of innermost loop
+# ( -- x ) returns index of innermost loop
+# -----------------------------------------------------------------------------
+# ------------------------------- catch / throw -------------------------------
+# -----------------------------------------------------------------------------
+# throw without catch frame - top level error handler
+# ( a -- n ) part of catch / throw exception handling mechanism
+# ( n -- ) part of catch / throw exception handling mechanism
+# when primitives throw exceptions, they can't easily execute
+# a deferred word. Current workaround is to let the code entry
+# into throwing check whether it is the deferred handler, and
+# flowcontrols accordingly.
+# Reason for two different handlings: when interpreting command line,
+# errors need to terminate rather than warmstart the interpreter.
+# ( -- ) throw exception -2
+# -----------------------------------------------------------------------------
+# -------------------------------- arithmetic ---------------------------------
+# -----------------------------------------------------------------------------
+# ( n1 -- n2 ) increment top of stack by one
+# ( n1 -- n2 ) increment top of stack by cell
+# ( n1 -- n2 ) increment top of stack by two
+# ( n1 -- n2 ) decrement top of stack by one
+# ( n1 n2 -- n3 ) add top two stack elements together, leave result
+# ( n1 n2 -- n3 ) subtract tos from nos, leave result
+# ( n -- u ) remove sign
+#   tos=${tos#-}
+# ( n1 n2 -- n3 ) multiply top two numbers, leave result
+# ( n1 u -- n2 ) calculate power of n1 ** u, leave result
+# ( n1 n2 n3 -- n4 n5 ) multiply n1 with n2, divide by n3, returning remainder n4 and quotient n5
+#   ((tos)) || divzero
+#   (( temp = s[sp--] * s[sp] ))
+#   (( temp2 = tos ))
+#   (( s[sp] = temp % tos ))
+#   (( tos = temp / tos ))
+#   if (( tos < 0 )); then
+#      (( tos-- ))
+#      (( s[sp] += temp2 ))
+#   fi
+#}
+# ( n1 n2 -- n3 ) return remainder of n1/n2
+#   ((tos=(s[sp--]%tos+tos)%tos))
+# ( n1 n2 -- n3 n4 ) return remainder n3 and quotient n4 of n1/n2
+#   ((tos)) || divzero
+#   (( temp = s[sp] ))
+#   (( temp2 = tos ))
+#   (( s[sp] = temp % tos ))
+#   (( tos = temp / tos ))
+#   if (( tos < 0 )); then
+#      (( tos-- ))
+#      (( s[sp] += temp2 ))
+#   fi
+# ( n1 n2 -- n3 ) divide n1 by n2, return result
+# ( n1 n2 n3 -- n4 ) multiply n1 with n2, divide by n3
+#   ((tos)) || divzero
+#   (( temp = s[sp--] * s[sp] ))
+#   (( temp2 = tos ))
+#   (( tos = temp / tos ))
+#   if (( tos < 0 )); then
+#      (( tos-- ))
+#   fi
+# ( u1 n -- u2 ) shift right u1 by n
+# ( u1 n -- u2 ) shift left u1 by n
+   ((tos="s[sp--]<<tos"))  # quotes defeat faulty syntax highlighting
+# ( n1 -- n2 ) multiply n1 by 2, implemented as (quicker) shift left by 1
+mul2()  {  (("tos<<=1")); }  # quotes help syntax hilighting of editor joe from getting confused
+# ( n1 -- n2 ) divide n1 by 2, imeplemented as (quicker) shift right by 1
+# ( n1 -- n2 ) reverse sign of n1
+# ( n1 n2 -- n1|n2 ) return the smaller one of two numbers
+# ( n1 n2 -- n1|n2 ) return the greater one of two numbers
+# -----------------------------------------------------------------------------
+# ---------------------------- arithmetic compare  ----------------------------
+# -----------------------------------------------------------------------------
+# ( x1 x2 -- flag ) compare top two stack elements, return true if equal, false otherwise
+# ( x1 x2 -- flag ) compare top two stack elements, return true if unequal, false otherwise
+# ( x -- flag ) compare top stack element with zero, return true if equal, false otherwise
+# ( x -- flag ) return true if top element is less than 0, false otherwise
+# ( n1 n2 -- flag ) return true if second stack element is smaller than top element, false otherwise
+# ( n1 n2 -- flag ) return true if second stack element is greater than top element, false otherwise
+# ( x1 x2 x3 x4 -- flag ) compare x1,x2 with x3,x4, return true if equal, false otherwise
+# -----------------------------------------------------------------------------
+# ----------------------------------- bool ------------------------------------
+# -----------------------------------------------------------------------------
+# ( x1 x2 -- x3 ) bitwise and of top two stack elements
+# ( x1 x2 -- x3 ) bitwise or of top two stack elements
+# ( x1 x2 -- x3 ) bitwise xor of top two stack elements
+# ( x1 -- x2 ) invert all bits of top stack elements
+# -----------------------------------------------------------------------------
+# ------------------------ number conversion and i/o --------------------------
+# -----------------------------------------------------------------------------
+# alternative implementation. different stack effect. if conversion fails, n
+# is the number of character not converted. x is the accumulated values of all
+#  legal digits up to the offending one
+# ( a n -- x 0 | x n ) try to convert n chars at a to number, respecting base
+   (( src = s[sp] ))                      # addr of next digit
+   (( s[sp] = 0 ))                        # accumulator
+      (( sign = -1 , src++ , tos-- ))     # strip leading -
+   for ((; tos; tos-- )); do              # for all digits
+      (( digit=m[src++]-48 ))             # read ascii of digit, convert to numeric
+      (( digit < 0 )) && break            # flag chars below 0 as invalid numbers
+      (( digit > 9 )) &&  {               # chars above 9 need more attention
+         (( digit -= 7 ))                 # convert A... to numeric
+         (( digit < 10 )) && break        # flag :...@ as invalid numbers
+         (( digit >= 36 )) && {           # chars above Z need more attention
+            (( digit -= 32 ))             # convert a... to numeric
+            (( digit < 10 )) && break     # flag [...' as invalid numbers
+      (( digit >= radix )) && break       # flag chars as invalid number"
+# conversion with standard stack effect. Uses alternative implementation now.
+# ( a n -- x -1 | 0 ) try to convert n chars at a to number, respecting base
+# ( n -- 0 n f ) start pictured number conversion
+# problem with bash 4.2-1:  comma delimited compound arithmetic expressions would segfault
+# ( n1 n2 f -- c n3 n4 f  ) pictured number conversion: convert a single digit
+# ( n1 n2 f -- ??? n3 n4 f ) pictured number conversion: convert remaining digits
+# ( n1 n2 f c -- c n3 n4 f  ) pictured number conversion: insert a specified character
+# ( n1 n2 f -- c n3 n4 f  ) pictured number conversion: insert minus sign if converted number is negative
+# ( ??? n1 n2 f -- a n3 ) pictured number conversion: end conversion, leaving number, converted to string
+# ( n1 -- ) pictured number conversion: output the string to which number has been converted
+# -----------------------------------------------------------------------------
+# ------------------------------------ i/o ------------------------------------
+# -----------------------------------------------------------------------------
+# ( c -- ) output the character which ascii is on top of stack
+# ( -- ) output a space character
+# ( n -- ) output spaces
+# ( -- ) clear screen
+# ( -- ) clear screen
+# ( a n -- ) output the string, which address and len are given on stack
+# ( -- ) output a line feed
+# ( n -- ) raw output of tos. does not respect base, but can output string in tos.
+# ( n -- ) output the signed number in tos, respecting base
+# ( -- c )  0 or (immediately) ascii of keystroke
+# would need to stuff ascii into a key buffer, read by key
+# key: ( -- c ) read one char from input, return ascii
+# ( a n1 -- n2 ) read n1 chars from input, store at a. number of actually entered chars returned as n2
+# ( c -- a n ) read word, delimited by c, from input stream. return address and len
+# ( -- ) output the prompt
+# ( -- ) show numbers on stack
+# ( -- ) exit bashforth, return to calling program of command line
+# -----------------------------------------------------------------------------
+# ------------------------------- dictionary  ---------------------------------
+# -----------------------------------------------------------------------------
+# ( -- ) modify header of most recently defined word to keep it from being found
+# ( -- ) set most recent word "findable"
+# ( a n -- ) create a new header with name identical to string passed on stack
+# ( xt -- a ) given xt, return word body address
+# ( a -- xt ) given word body address, return xt
+# ( xt -- wordnum ) returns word number or 0, opposite of name>.
+# ( wordnum -- xt ) calculate code field address from word number
+# ( wordnum -- a n ) return string with name of word, given word number
+# ( wordnum --  ) output word name, given word number ("nfa")
+# ( word# -- flag ) return true flag if word, specified by word number ("nfa"), is an immediate word
+# ( -- ) make most recently defined word an immediate word
+# ( a n -- namefield | 0 ) returns 0 or word number of word which name is given as string on stack
+# ( -- ) show list of words in vocabulary
+   (( COLUMNS )) || clear                                         # initialize COLUMNS is necessary
+# -----------------------------------------------------------------------------
+# ------------------------------ compilation ----------------------------------
+# -----------------------------------------------------------------------------
+# ( x -- )
+# ( c -- ) compile an 8-bit number to memory at "here"
+# ( -- ) turns compilation off
+# ( -- ) turns compilation on
+# ( n -- ) statically reserve n memory locations
+# ( -- a ) returns end-of-code address
+# -----------------------------------------------------------------------------
+# ----------------------------------- mem -------------------------------------
+# -----------------------------------------------------------------------------
+# ( a -- x ) read and return contents of address
+# ( a -- ) output the contents of address a as signed number.
+# ( x a -- ) store x into memory address a
+# ( a -- c ) read and return 8 bits from memory address a
+# ( c a -- ) write 8 bits to memory at address a
+# ( a1 -- a2 c ) a1+1 -> a2,  [a1] -> c
+# ( a1 -- a2 x ) a1+cell -> a2,  [a1] -> x
+# ( a -- x1 x2 ) fetch two cells from a
+# ( x1 x2 a -- ) store cells at a
+# ( n a -- ) add n to contents of memory att a
+# ( x1 a -- x2 ) read x2 from a, then store x1 in a
+# ( a n1 c -- n2 ) search for c in string a n1. n2 is len of remainder, including first c
+# ( a n1 c -- n2 ) skip all leading c in atring a n1. n2 is len of remainder
+# ---------- compare   is a bit dirty, because of quick fix ------------
+# compare $tos bytes at  $source and $dest
+# result of comparison (-1/0/1) in $tos
+# ( a1 n1 a2 n2 -- -1 | 0 | 1 ) compare two strings at a1 and a2.
+compare() {             # n2 in tos
+# ( a1 n c -- ) fill n memory locations at a1 with c
+# ( a1 a2 n -- ) move contents of n memory locations at a1 to a2
+# ( a1 n a2 -- ) store string a1 n at a2, with leading count byte
+# ( a1 n1 n -- a2 n2 ) clip first n chars off string at a1
+# ( c -- a n ) read word, delimited by c, from input stream. return address and len
+# -----------------------------------------------------------------------------
+# ------------------------------ string stack ---------------------------------
+# -----------------------------------------------------------------------------
+# ( a n -- ) push string at a to string stack
+# ( -- a n ) pop string from string stack to here
+# ( stringstack: string -- ) pop and output string from string stack
+# ( -- n ) returns number stack elements on string stack
+# ( -- ) show strings on string stack
+# ( stringstack: str -- str str ) duplicate top string stack element
+# ( stringstack: x1 x2 -- x1 x2 x1 x2 ) duplicate top two elements of stack element
+# ( stringstack: x -- ) drop top stringstack element
+# ( stringstack: x1 x2 -- x2 x1 ) swap top two string stack elements
+# ( stringstack: x1 x2 -- x1 x2 x1 ) copies next-of-stack of string stack to top
+# ( stringstack: x1 x2 -- x2 ) discards next-of-stack string stack element
+# ( stringstack: x1 x2 x3 -- x2 x3 x1 ) rotate 3rd string stack element to top
+# ( stringstack: "string1" "string2" -- "string1string2" ) joins top two strings
+# ( u1 u2 -- )  ( ss: $1 -- $2 )  cut and return string starting at index u1 (zero based) with max length of u2 chars. negative index counts from end of string
+# ( u -- ) ( ss: $1 -- $2 ) modifies string so that leading u chars of string remain
+# ( u -- ) ( ss: $1 -- $2 ) modifies string so that trailing u chars of string remain
+# ( a n -- ) creates header. expects ascii array type string
+# -----------------------------------------------------------------------------
+# --------------------------------- does> -------------------------------------
+# -----------------------------------------------------------------------------
+# executed upon execution of word defined by defining word:
+# puts body address of defined word on stack, nests into does> action
+# ( -- a )
+# ( -- ) define run time action of a compiling word
+# -----------------------------------------------------------------------------
+# ---------------------------- hi-level words ---------------------------------
+# -----------------------------------------------------------------------------
+# ( ??? -- ) initialize stacks, return to forth command line interpreter
+# ( a -- ) set cfa of last word to a
+# ( -- f ) returns flag, indicating whether bashforth is compiling (-1) or interpreting (0)
+# ( -- ) throw exception if in intepreting state
+# ( a n -- a n 0 | xt 1 | xt -1 ) search dictionary, returns name and 0 if not found, xt and precedence (1=imm) if found
+# ( x -- ) immediate word which compile top of stack as number into word
+# ( <stream> -- a ) return execution token of word which name is read from input stream
+# ( <stream> -- ) compile execution token of next word
+# ( -- ) do nothing
+# ( n1 -- n2 ) convert cells to number of memory locations
+# ( n1 -- n2 ) convert chars to number of memory locations
+# ( -- ) set number base to 16
+# ( -- ) set number base to 10
+# ( -- ) set number base to 2
+# ( -- a ) return address of a scratch string space
+# ( <stream> -- ) create a new header, name read from input stream
+# ( <stream> -- ) create a variable
+# ( <stream> x -- ) create a constant
+# ( <stream> -- ) create new high-level word
+# ( -- ) finish compilation of a high-level word
+# ( a n -- ) compile the string, whose address and len is passed on stack
+# ( <stream> -- ) compile a string from input stream
+# ( <stream> -- ) put address and len of string, delimited by ), interactively on stack
+# ( <stream> -- ) compile string from input stream into word, return address and len during run time
+# ( <stream> -- ) output string from input stream, in interpreting mode
+# ( <stream> -- ) compile string to high-level word, output string at run time
+# ( <stream> -- ) ignore text until ) as comment
+# ( <stream> -- ) ignore rest of line as comment
+# ( <stream> -- ) ignore rest of line as comment
+# ( <stream> -- c ) return ascii of next char on stack
+# ( <stream> -- c ) return ascii of next char on stack, or compile as literal
+# -----------------------------------------------------------------------------
+# -------------------------------- flow control -------------------------------
+# -----------------------------------------------------------------------------
+# ( f -- ) flow control: true/false if ... else ... then    . else part is optional
+# ( -- ) flow control:  true/false if ... else ... then
+# ( -- ) flow control: true/false if ... else ... then     . else part is optional
+# ( -- ) flow control:  begin ... true/false until    or    begin ... true/false while ... repeat
+# ( f -- ) flow control:  begin ... true/false while ... repeat
+# ( -- ) flow control:  begin ... true/false while ... repeat
+# ( -- ) flow control:  begin ... again
+# ( f -- ) flow control:  begin ... true/false until
+# ( start -- ) flow control:  (limit) for ... next  , counts down
+# ( -- ) flow control:  (limit) for ... next , counts down
+# ( limit start -- ) flow control:  (limit) (start) do ... loop
+# ( limit start -- ) flow control:  (limit) (start) ?do ... loop
+# ( -- ) flow control:  (limit) (start) do ... loop
+# ( n -- ) flow control:  (limit) (start) do ... (increment) +loop
+# ( a -- )
+# ( -- ) flow control:  (limit) (start) do ... if ... leave then ... loop
+# ( f -- ) flow control:  (limit) (start) do ... (flag) ?leave ... loop
+# -----------------------------------------------------------------------------
+# -------------------------------- interpreter --------------------------------
+# -----------------------------------------------------------------------------
+# ( -- ) fill input buffer from standard input
+# ( a n -- ) interpreter for a single word
+# ( -- ) interpret one line of forth source
+# ( a n -- ) interpret the string passed on stack
+#revealheader "evaluate"
+#colon evaluate            \
+# string to tib  $interpret
+# -----------------------------------------------------------------------------
+# ---------------------------------- include ----------------------------------
+# -----------------------------------------------------------------------------
+# ( a n1 -- n2 )
+# ( a n1 -- n2 )
+# ( n -- )
+# ( <stream> -- ) read forth source from file
+# ----- file interface -----
+#  ( -- x )   a constant for file access method r/o
+#revealheader "r/o"
+#constant famreadwrite 0
+#  ( -- x )   a constant for file access method r/w
+#revealheader "r/w"
+#constant famreadwrite 1
+# ( a n fam -- fileid ior )
+#revealheader "create-file"
+#code create-file create-file
+#create-file()  {
+#     r[++rp]=$tos
+#     tos=${s[sp]}
+#     pack
+#     (echo -n > $tos) 2> /dev/null
+#     s[sp]="12345678"       # can only use one handle as far
+#     tos=$?
+#     (( rp-- ))             # ior is not used now
+#    if fam=0 then chmod -r filename
+#}
+# open-file
+# read-file
+# write-file
+# close-file
+# file-size
+# file-position
+# -----------------------------------------------------------------------------  save-system and restore were
+# ------------------------------- save-system ---------------------------------  contributed by quaraman-me
+# -----------------------------------------------------------------------------
+# ( a c -- ) writes image of system to file, file name passed as address, count on stack
+# ( <stream> -- ) writes image of system to file, file name taken from input stream. If no name given, "save_system" will be the name.
+# -----------------------------------------------------------------------------
+# -------------------------- restore saved system -----------------------------
+# -----------------------------------------------------------------------------
+# ( a c -- )
+# ( <stream> -- ) write image of system to file, file name taken from input stream. If no name given, saved_system will be the name.
+# -----------------------------------------------------------------------------
+# ------------------------------ init / startup -------------------------------
+# -----------------------------------------------------------------------------
+# executed by cold and warm
+# ( ??? -- )
+m[quit+1]=$bracketquit            # set deferred quit
+# ( ??? -- )
+m[warm+1]=$warmhandler            # set deferred warm
+# ( -- ) prints GPL notice
+# ( -- ) prints the opening screen
+# -----------------------------------------------------------------------------
+# ------------------------------ misc optionals -------------------------------
+# -----------------------------------------------------------------------------
+# these may shell to other programs. in fact, several of the following words do
+# ----------------------------------- doc -------------------------------------
+# ( xt -- x )
+# calls cat, sed, cut
+# ( -- )
+# ( <stream> -- ) print stack effect and description of word, name taken from input stream
+# ----------------- see ------------------
+# calls sed
+# ( -- )
+# ( <stream> -- ) print source of a word (read from the executed bashforth script file)
+# ---------------------- terminal control ---------------------
+# ( -- 0 ) returns color code for color black
+# ( -- 1 ) returns color code for color red
+# ( -- 2 ) returns color code for color green
+# ( -- 3 ) returns color code for color yellow
+# ( -- 4 ) returns color code for color blue
+# ( -- 5 ) returns color code for color magenta
+# ( -- 6 ) returns color code for color cyan
+# ( -- 7 ) returns color code for color white
+# fg: 0:3  bg: 4:7  bold: 8  underscore: 9
+# ( color -- ) set foreground color
+# ( color -- ) set background color
+# ( -- ) reset colors and attributes to normal
+# ( -- ) set bold attribute
+# ( -- ) set underscore attribute
+# ( -- ) reverse screen colors
+# ( -- u ) read all screen attributes, incl color
+# ( u -- ) set all screen attributes, incl color, as read with attr@
+# ( -- fg bg ) return current colors
+# ( x y -- ) position cursor at x,y
+# ( -- ) position cursor at upper left
+# ---------------------------------------------------------------------
+# ( n1 -- n2 ) returns random number between 0 and n1-1 (max 2^30-1 = 1073741823)
+# ( -- s m h d m y ) returns system time: seconds minutes hours day month year
+# -----------------------------------------------------------------------------
+# ---------------------------------- shell ------------------------------------
+# -----------------------------------------------------------------------------
+# ( -- ) shows environment variables
+# ( -- ) ( string: name -- contents )  replaces name of an environment variable against contents
+# ( -- ) shells to bash
+# ( a n1 -- n2 ) shell, string is command + arguments. returns exit code
+# ( a1 n1 a2 n2 -- n3 ) shell, append a2 n2 as arguments to command a1 n1, returns exit code
+# ( a n  -- ) takes file name from stack and edits file, using external editor
+# ( <stream> -- ) edit the file with name taken from stream
+# ( n -- ) sleeps for n seconds
+# ( n -- ) sleeps for n milliseconds
+# ( -- n ) returns seconds since 1/1/1970
+# ( -- n ) returns seconds since 1/1/1970
+# ( -- n ) returns nanoseconds since 1/1/1970
+# ( xt -- n ) measures the time in nanoseconds to execute xt, returned as n
+# -----------------------------------------------------------------------------
+# ------------------------- interpreter entry  point --------------------------
+# -----------------------------------------------------------------------------
+   tos=0                                  # assume no command line
+      s[++sp]="nop $COMMANDLINE"          # unless one received
+      ((m[in+1]=tos=tib+1))               # destination, dest becomes input buffer
+      unpack                              # convert string to chars
+      m[tos+tib+1]=255                    # end of line delimiter at end of buffer works
+      unset COMMANDLINE                   # execute only once
+      tos=-1                              # indicate "commandline found"
+# duplicating part of the outer interpreter loop here is done
+# to allow command line actions to carry over stack into the
+# interactive interpreter - the "quit" outer interpreter
+# initializes the stacks
+# -----------------------------------------------------------------------------
+# ---------------------------- remove transients ------------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# ----------------------------- start interpreter -----------------------------
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+#                               end of shell script
+# -----------------------------------------------------------------------------
