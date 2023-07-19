@@ -181,6 +181,7 @@ version="0.63a"
 #                    changed: set working variables in compare to local
 # 0.63   20190909 ls changed: words attempts to break lines
 # 0.63a  20201121 ls fixed: exposed one superfluous "epoche" header 
+# 0.63a  20230719 fp added few words & forked project & changed editor to standard vim 
 #
 #   known bugs:
 #     catch:   doesn't return the thrown value correctly sometimes
@@ -239,7 +240,7 @@ PADAWAY=256                      # distance between HERE and PAD
 TIBSIZE=256
 PROMPT="ok"
 LOADING=""
-EDITOR=sensible-editor
+EDITOR=vim
 # -------------------------------------------------------------------------
 # ---                  allocate memory / initialize vars                ---
 # -------------------------------------------------------------------------
@@ -1567,6 +1568,12 @@ dot_s() {
 # ( -- ) exit bashforth, return to calling program of command line
 revealheader "bye"
 code bye exit
+
+# ( -- ) unofficial exit with system status 1 or 0 
+revealheader "exit_1" 	# 1 (bye) 
+code bye exit 1 
+revealheader "exit_0"   # 0 (bye) syntax on some forth 
+code bye exit 0 
 
 # -----------------------------------------------------------------------------
 # ------------------------------- dictionary  ---------------------------------
