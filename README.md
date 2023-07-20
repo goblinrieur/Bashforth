@@ -4,6 +4,18 @@ Will I guess only add few more words to get it better & more usable. I will neve
 
 If you need a full forth, prefer gnu-forth, swiftforth, figforth, pforh, or any other interpreter. Here is a bash exercice at first ! 
 
+# will now include a forth written words library 
+
+defautl will be named library.fs
+
+[lib](./lib/)
+
+while in bashforth interpreter :
+
+```
+include lib/library.fs
+```
+
 # forked on Tue Jul 18 2023
 
 This Forth interpreter, entirely written as bash script, is a F³ (Fully Functional Forth), albeit a tad slow.
