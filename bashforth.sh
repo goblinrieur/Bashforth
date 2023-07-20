@@ -2,7 +2,7 @@
 set -u
 # set -x
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
-version="0.63a"
+version="0.63b"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -182,6 +182,7 @@ version="0.63a"
 # 0.63   20190909 ls changed: words attempts to break lines
 # 0.63a  20201121 ls fixed: exposed one superfluous "epoche" header 
 # 0.63a  20230719 fp added few words & forked project & changed editor to standard vim 
+# 0.63b  20230720 fp 0> -! hidecursor showcursor was missing & add few full forth words in lib/ default library file 
 #
 #   known bugs:
 #     catch:   doesn't return the thrown value correctly sometimes
@@ -1250,6 +1251,11 @@ revealheader "0<"
 code less0 less0
 less0() {  tos=$((-(tos<0))); }
 
+# ( x -- flag ) return true if top element is more than 0, false otherwise
+revealheader "0>"
+code more0 more0
+more0() {  tos=$((-(tos>0))); }
+
 # ( n1 n2 -- flag ) return true if second stack element is smaller than top element, false otherwise
 revealheader "<"
 code less less
@@ -1461,6 +1467,14 @@ type() {
    printf '%s' "$tos"
    tos="${s[sp--]}"
 }
+
+# ( -- ) output a line feed
+revealheader "hidecursor"
+code hidecursor printf '\e[?25l'
+
+# ( -- ) output a line feed
+revealheader "showcursor"
+code showcursor printf '\e[?25h'
 
 # ( -- ) output a line feed
 revealheader "cr"
@@ -1793,6 +1807,14 @@ colon twofetch   $skim $swap $fetch
 # ( x1 x2 a -- ) store cells at a
 revealheader "2!"
 colon twostore   $tuck $cellplus $store $store
+
+# ( n a -- ) minus n to contents of memory att a
+revealheader "-!"
+code minusstore minusstore
+minusstore() {
+   ((m[tos]-=s[sp--]))
+   tos=${s[sp--]}
+}
 
 # ( n a -- ) add n to contents of memory att a
 revealheader "+!"
