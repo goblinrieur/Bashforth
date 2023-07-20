@@ -183,7 +183,7 @@ version="0.63b"
 # 0.63a  20201121 ls fixed: exposed one superfluous "epoche" header 
 # 0.63a  20230719 fp added few words & forked project & changed editor to standard vim 
 # 0.63b  20230720 fp 0> -! hidecursor showcursor was missing & add few full forth words in lib/ default library file 
-#
+#					 add colors for terminal without breaking fg/bg funtions 
 #   known bugs:
 #     catch:   doesn't return the thrown value correctly sometimes
 #     include: max line length in source files isn't checked against TIBSIZE
@@ -2747,7 +2747,7 @@ colon warmhandler          \
    $init_other             \
    $decimal                \
    $prompt                 \
-   $quit
+   $quit	
 
 m[warm+1]=$warmhandler            # set deferred warm
 
@@ -2778,10 +2778,13 @@ code hello hello
 hello() {
    echo -e "\nBashForth v$version
    $(license)
-   www:      https://github.com/Bushmills/Bashforth
+   www:      https://github.com/goblinrieur/Bashforth
 
    words <enter>       shows a list of available words
    doc word  <enter>   gives description of word
+   
+   You may need to add at least default library to your code
+   include lib/library.fs
 
 "
 }
@@ -2838,31 +2841,57 @@ constant black 0
 
 # ( -- 1 ) returns color code for color red
 revealheader "red"
-constant red 1
+code red red
+red() {
+		printf '%b' "\e[31m"
+}
 
 # ( -- 2 ) returns color code for color green
 revealheader "green"
-constant green 2
+code green green
+green() {
+		printf '%b' "\e[32m"
+}
 
 # ( -- 3 ) returns color code for color yellow
 revealheader "yellow"
-constant yellow 3
+code yellow yellow
+yellow() {
+		printf '%b' "\e[33m"
+}
 
 # ( -- 4 ) returns color code for color blue
 revealheader "blue"
-constant blue 4
+code blue blue
+blue() {
+		printf '%b' "\e[34m"
+}
 
 # ( -- 5 ) returns color code for color magenta
 revealheader "magenta"
-constant magenta 5
+code magenta magenta
+magenta() {
+		printf '%b' "\e[35m"
+}
 
 # ( -- 6 ) returns color code for color cyan
 revealheader "cyan"
-constant cyan 6
+code cyan cyan
+cyan() {
+		printf '%b' "\e[36m"
+}
+revealheader "grey"
+code grey grey
+grey() {
+		printf '%b' "\e[37m"
+}
 
 # ( -- 7 ) returns color code for color white
 revealheader "white"
-constant white 7
+code white white
+white() {
+		printf '%b' "\e[38m"
+}
 
 # fg: 0:3  bg: 4:7  bold: 8  underscore: 9
 (( attributes = 112 ))
