@@ -2248,6 +2248,8 @@ revealheader "create"
 colon create       $bl $stream $createstr
 
 # ( <stream> -- ) create a variable
+revealheader "2variable"
+colon variable     $create  $zero $comma $zero $comma
 revealheader "variable"
 colon variable     $create  $zero $comma
 
