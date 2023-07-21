@@ -1,12 +1,12 @@
 # Bashforth
 
-Will I guess only add few more words to get it better & more usable. I will never try to have a full ANS froth compatibility.
+Will I guess only add few more words to get it better & more usable. I will never try to have a full ANS forth compatibility.
 
-If you need a full forth, prefer gnu-forth, swiftforth, figforth, pforh, or any other interpreter. Here is a bash exercice at first ! 
+If you need a full forth, prefer gnu-forth, swiftforth, figforth, pforth, or any other interpreter. Here is a bash exercise at first ! 
 
 # will now include a forth written words library 
 
-defautl will be named library.fs
+default will be named library.fs
 
 [lib](./lib/)
 
