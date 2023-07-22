@@ -18,7 +18,7 @@ include lib/library.fs
 
 # keep bash interaction available
 
-[pic](./example.png)
+![pic](./example.png)
 
 # forked on Tue Jul 18 2023
 
