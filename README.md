@@ -16,6 +16,10 @@ while in bashforth interpreter :
 include lib/library.fs
 ```
 
+# keep bash interaction available
+
+[pic](./example.png)
+
 # forked on Tue Jul 18 2023
 
 This Forth interpreter, entirely written as bash script, is a F³ (Fully Functional Forth), albeit a tad slow.
