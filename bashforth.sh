@@ -1588,6 +1588,8 @@ revealheader "exit_1" 	# 1 (bye)
 code bye exit 1 
 revealheader "exit_0"   # 0 (bye) syntax on some forth 
 code bye exit 0 
+revealheader "(bye)"   # 0 (bye) syntax on some forth 
+code bye exit 0 
 
 # -----------------------------------------------------------------------------
 # ------------------------------- dictionary  ---------------------------------
