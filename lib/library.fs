@@ -13,4 +13,4 @@
 : sumstack depth dup 0> if 1- 0 do + loop then ; ( n..z -- N ) \ sum all stack
 : say-odd 100 dup dup 11 + 3 0 do emit loop ;           \ displays odd
 : say-even 110 101 118 over 4 0 do emit loop ;			\ displays even 
-
+: clearstack depth 0 do drop loop ;		\ drop all of the stack content
