@@ -17,4 +17,4 @@
 : sigma ( n .. m -- n+ N+1 ...M ) 	dup 0= if exit then 0 swap 0 do I + LOOP ; 	\ sum the integers from 0 to n-1
 : c ( n[°f] -- n[°c] ) 9 5 */ 32 + . ;
 : f ( n[°c] -- n[°f] ) 32 - 5 9 */ . ;
-
+: clearstack depth 0 do drop loop ;		\ drop all of the stack content
