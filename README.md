@@ -4,6 +4,22 @@ Will I guess only add few more words to get it better & more usable. I will neve
 
 If you need a full forth, prefer gnu-forth, swiftforth, figforth, pforth, or any other interpreter. Here is a bash exercise at first ! 
 
+# already usable 
+
+```
+francois@francoisPCTP:~/GITLAB/dev/dev_bash_forthinterpreter$ cat > helloworld.fs
+: hello 2 dup 0 do cr loop ." HELLO WORLD" 1 + 0 do cr loop ; 
+hello
+bye
+francois@francoisPCTP:~/GITLAB/dev/dev_bash_forthinterpreter$ ./bashforth.sh helloworld.fs 
+
+
+HELLO WORLD
+
+
+francois@francoisPCTP:~/GITLAB/dev/dev_bash_forthinterpreter$
+```
+
 # will now include a forth written words library 
 
 default will be named library.fs
