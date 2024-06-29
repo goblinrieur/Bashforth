@@ -1,3 +1,5 @@
+: s>d dup 0< ;
+: .r >r s>d r> d.r ;
 : binary 2 base ! ; ( -- ) 
 : square dup * ; ( n -- n*n ) 
 : cube dup square * ; ( n -- n^3 ) 
