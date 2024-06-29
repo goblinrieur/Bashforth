@@ -1,4 +1,6 @@
 : s>d dup 0< ;
+: 2+ 1 1 + + ;
+: 2- 1 1 - - ;
 : .r >r s>d r> d.r ;
 : binary 2 base ! ; ( -- ) 
 : square dup * ; ( n -- n*n ) 
