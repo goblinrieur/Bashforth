@@ -14,6 +14,7 @@
 : even? 2 mod if true else false then ; ( n -- flag ) 
 : f ( n[°c] -- n[°f] ) 32 - 5 9 */ . ;
 : fourth square square ; ( n -- n^4 ) 
+: ft>in 12 * ;
 : loopy rot rot ?do i . dup +loop drop ; ( n m l -- [n;m] l steped) 
 : odd? 2 mod if false else true then ; ( n -- flag ) 
 : percent * 100 / ; 
@@ -24,5 +25,7 @@
 : sigma dup 0= if exit then 0 swap 0 do i + loop ; ( n .. m -- n+ N+1 ...M )
 : sqrt 0 tuck do 1+ dup 2* 1+ +loop ; ( n -- squaredroot[n] ) 
 : square dup * ; ( n -- n*n ) 
+: star 42 emit ;
 : sumstack depth dup 0> if 1- 0 do + loop then ; ( n..z -- N ) 
 : syracuse begin dup and if 3 * 1+ else 2/ then dup . dup 1 until drop cr ; ( n -- n...1 ) 
+: yards>in 36 * ;
