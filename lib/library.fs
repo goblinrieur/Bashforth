@@ -1,3 +1,5 @@
+: not 0= ; 
+: square dup * ; ( n -- n*n ) 
 : 2+ 1 1 + + ;
 : 2- 1 1 - - ;
 : 3Dmul dup >r * rot r@ * rot r> * rot ; ( x y z n -- nx ny nz )
@@ -25,7 +27,6 @@
 : say-odd 100 dup dup 11 + 3 0 do emit loop ;           
 : sigma dup 0= if exit then 0 swap 0 do i + loop ; ( n .. m -- n+ N+1 ...M )
 : sqrt 0 tuck do 1+ dup 2* 1+ +loop ; ( n -- squaredroot[n] ) 
-: square dup * ; ( n -- n*n ) 
 : star 42 emit ;
 : sumstack depth dup 0> if 1- 0 do + loop then ; ( n..z -- N ) 
 : syracuse begin dup and if 3 * 1+ else 2/ then dup . dup 1 until drop cr ; ( n -- n...1 ) 

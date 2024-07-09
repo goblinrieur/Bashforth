@@ -2,7 +2,7 @@
 set -u
 # set -x
 # required bash 2.04 or more recent, but probably depends on bash 3.x now, since v0.54
-version="0.63b"
+version="0.63c"
 # bashforth - forth interpreter in bash
 # v0.03 20030219 ls added bool, logical, constants, fixed nip and other
 # v0.04 20030219 ls added ?dup, fixed 0branch
@@ -184,6 +184,7 @@ version="0.63b"
 # 0.63a  20230719 fp added few words & forked project & changed editor to standard vim 
 # 0.63b  20230720 fp 0> -! hidecursor showcursor was missing & add few full forth words in lib/ default library file 
 #					 add colors for terminal without breaking fg/bg funtions 
+# 0.63c  20240709 libs/* few examples and a main library update
 #   known bugs:
 #     catch:   doesn't return the thrown value correctly sometimes
 #     include: max line length in source files isn't checked against TIBSIZE
