@@ -31,3 +31,4 @@
 : sumstack depth dup 0> if 1- 0 do + loop then ; ( n..z -- N ) 
 : syracuse begin dup and if 3 * 1+ else 2/ then dup . dup 1 until drop cr ; ( n -- n...1 ) 
 : yards>in 36 * ;
+: starbar cr 10 0 do star loop cr ; ( -- ) \ draws separator bar
