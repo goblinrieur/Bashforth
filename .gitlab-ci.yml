@@ -12,10 +12,11 @@
 # You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
 #
 # To contribute improvements to CI/CD templates, please follow the Development guide at:
-# https://docs.gitlab.com/ee/development/cicd/templates.html
+# https://docs.gitlab.com/ee/development/cicd/templates.html || true
 # This specific template is located at:
 # https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
 stages:       # List of stages for jobs, and their order of execution
+  - scan
   - build
   - test
   - deploy
@@ -52,3 +53,16 @@ build_artifact:
   artifacts:
    paths:
     - artifact/
+kics_scan:
+  stage: scan
+  image: docker:latest
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - docker run --rm -v "$(pwd):/src" --entrypoint="" checkmarx/kics:latest kics scan --path /src --output-path /src/report.html --report-formats html || true
+  artifacts:
+    paths:
+      - report.html
